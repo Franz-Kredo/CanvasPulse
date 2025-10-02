@@ -39,7 +39,7 @@ pip install -r requirements.txt
 Create `.env` in the project root:
 
 ```dotenv
-CANVAS_TOKEN=your_canvas_token
+CANVAS_TOKEN="your_canvas_token"
 ```
 
 Edit `config.py` if needed:
