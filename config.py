@@ -34,8 +34,8 @@ ASSIGNMENT_PARAMS = {
 }
 
 # --- Filtering Rules ---
-# List of course IDs to include in the report
-COURSE_IDS = [9424, 9425, 9411, 9419]
+# List of course IDs to avoid in the report
+AVOID_COURSE_IDS = [9424, 9425, 9411]
 
 # List of assignment IDs to always exclude
 AVOID_ASSIGNMENT_IDS = [98301, 96732, 98019]

@@ -7,8 +7,21 @@ from typing import List, Optional
 from models import Assignment
 from config import Colors, OVERDUE_WINDOW_DAYS
 
+from models import parse_due_date
+
+
 class ConsolePresenter:
     """Formats and prints assignment lists to the console."""
+    def display_courses(self, courses: List[dict[str, any]]):
+        """Prints a list of courses with their IDs."""
+        print("\n=== Available Courses ===")
+        if not courses:
+            print(f"{Colors.GREY}No available courses found.{Colors.RESET}\n")
+            return
+        
+        for course in courses:
+            print(f"[{Colors.BLUE}{course['id']}{Colors.RESET}] - {course['name']}")
+        print() # Add a final newline for spacing
 
     def display_assignments(self, overdue: List[Assignment], upcoming: List[Assignment]):
         """The main display method."""
@@ -87,3 +100,42 @@ class ConsolePresenter:
         
         minutes = int((late.seconds % 3600) // 60)
         return f"{minutes}m late"
+    
+    def display_terms(self, terms: List[dict[str, any]]):
+        """Prints a list of enrollment terms, highlighting the current one."""
+        print("\n=== Enrollment Terms ===")
+        if not terms:
+            print(f"{Colors.GREY}No terms found.{Colors.RESET}\n")
+            return
+
+        now = datetime.now(timezone.utc)
+        found_current = False
+
+        sorted_terms = sorted(terms, key=lambda t: t.get('start_at') or '', reverse=True)
+
+        for term in sorted_terms:
+            term_id = term.get("id")
+            term_name = term.get("name")
+            start_date = parse_due_date(term.get("start_at"))
+            end_date = parse_due_date(term.get("end_at"))
+
+            is_current = False
+            if start_date and start_date <= now:
+                if (end_date and now <= end_date) or not end_date:
+                    is_current = True
+                    found_current = True
+            
+            # Formatting
+            id_str = f"[{Colors.BLUE}{term_id}{Colors.RESET}]"
+            date_str = f"{start_date.strftime('%Y-%m-%d') if start_date else 'N/A'} to {end_date.strftime('%Y-%m-%d') if end_date else 'Present'}"
+            
+            if is_current:
+                print(f"{Colors.YELLOW}>> {id_str} - {term_name}{Colors.RESET} {Colors.GREEN}(Current){Colors.RESET}")
+                print(f"   {Colors.GREY}   ({date_str}){Colors.RESET}")
+            else:
+                print(f"   {id_str} - {term_name}")
+                print(f"   {Colors.GREY}   ({date_str}){Colors.RESET}")
+        
+        if not found_current:
+            print(f"\n{Colors.YELLOW}Note: No term is currently active based on today's date.{Colors.RESET}")
+        print()
