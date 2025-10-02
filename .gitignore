@@ -210,3 +210,5 @@ __marimo__/
 
 #--- Custom gitignore's (can be removed) ---#
 _canvas.py
+printify.sh
+snapshots/
