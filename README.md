@@ -27,3 +27,15 @@ Terminal tool that lists **upcoming** and **recently overdue** Canvas assignment
 6 directories, 12 files
 
 ```
+
+
+## Running tests
+- Run main test
+```bash
+python -m pytest -q 
+```
+
+- Run API test
+```bash
+pytest -v -m live tests/integration/test_canvas_api_live.py
+```
