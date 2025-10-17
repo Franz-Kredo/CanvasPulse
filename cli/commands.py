@@ -1,14 +1,16 @@
-# cli/commands.py
+
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, Type, Any
+
+from core.services import CourseService
 
 # For type annotations
 from argparse import ArgumentParser
 
 # --- Registry ---
 
-COMMANDS: Dict[str, Type["ICommand"]] = {}
+COMMANDS: Dict[str, Type[ICommand]] = {}
 
 
 def register(name: str) -> Callable[[Type["ICommand"]], Type["ICommand"]]:
@@ -48,7 +50,14 @@ class ListCourses(ICommand):
                        help="Include archived/ended courses")
 
     def run(self, args, deps) -> None:
-        raise NotImplementedError("ListCourses.run: Not Implemented")
+        if deps.canvas_client is None:
+            raise NotImplementedError("Likely missing CANVAS_TOKEN in .env)")
+        if deps.presenter is None:
+            raise NotImplementedError("No presenter configured")
+
+        service = CourseService(deps.canvas_client)
+        courses = service.list_courses(include_archived=args.include_archived)
+        deps.presenter.display_courses(courses)
 
 
 @register("list-terms")
