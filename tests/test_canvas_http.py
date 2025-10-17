@@ -3,7 +3,6 @@ from infra.canvas_http import CanvasHTTPClient
 from requests import RequestException
 
 
-
 class FakeResponse:
     def __init__(self, payload, next_url=None):
         """
@@ -39,11 +38,14 @@ class FakeSession:
         return nxt
 
 
-###=========== Tests ===========###
+# ##=========== Tests ===========## #
 def test_get_paginated_collects_across_pages_and_returns_list():
     # Page 1 (two items) -> next -> Page 2 (one item) -> end
-    page1 = FakeResponse([{"id": 1}, {"id": 2}], next_url="https://api/courses?page=2")
-    page2 = FakeResponse([{"id": 3}], next_url=None)
+    page1 = FakeResponse(payload=[{"id": 1}, {"id": 2}],
+                         next_url="https://api/courses?page=2")
+
+    page2 = FakeResponse(payload=[{"id": 3}],
+                         next_url=None)
 
     client = CanvasHTTPClient(base_url="https://api/", token="X")
     client._session = FakeSession([page1, page2])  # overwrite internal session
@@ -61,7 +63,7 @@ def test_get_paginated_collects_across_pages_and_returns_list():
 
 
 def test_get_paginated_supports_single_object_pages():
-    # First page is a single object (Canvas sometimes returns dict for single-page endpoints)
+    # First page=single object (Canvas can return dict for single-page endpts)
     page1 = FakeResponse({"id": 42, "name": "Single"}, next_url=None)
 
     client = CanvasHTTPClient(base_url="https://api/", token="X")

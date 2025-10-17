@@ -1,4 +1,4 @@
-# tests/integration/test_canvas_api_live.py
+
 import os
 import pytest
 from dotenv import load_dotenv
@@ -8,10 +8,13 @@ from requests.exceptions import RequestException
 # Load .env from project root
 load_dotenv()
 
+
 @pytest.mark.live
 def test_canvas_api_token_validity():
     """Checks if the real Canvas API token in .env works."""
-    base_url = os.getenv("CANVAS_BASE_URL", "https://reykjavik.instructure.com/")
+    base_url = os.getenv(key="CANVAS_BASE_URL",
+                         default="https://reykjavik.instructure.com/")
+
     token = os.getenv("CANVAS_TOKEN")
 
     assert token, "Missing CANVAS_TOKEN in .env — cannot run live test."
@@ -20,7 +23,10 @@ def test_canvas_api_token_validity():
 
     try:
         # A lightweight call that doesn't change anything
-        courses = client.get_paginated("/api/v1/courses", params={"per_page": 1})
+        courses = client.get_paginated(
+            path="/api/v1/courses",
+            params={"per_page": 1}
+        )
         assert courses, "API call succeeded but returned empty data."
         print(f"✅ Token appears valid — fetched {len(courses)} item(s).")
     except RequestException as e:
