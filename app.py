@@ -29,7 +29,10 @@ class Deps:
         token = os.getenv(key="CANVAS_TOKEN",
                           default=None)
 
-        canvas_client = CanvasHTTPClient(base_url, token) if token else None
+        if not token:
+            raise ValueError("Token missing in .env file")
+
+        canvas_client = CanvasHTTPClient(base_url, token)
         presenter = ConsolePresenter()
 
         return Deps(canvas_client=canvas_client, presenter=presenter)
