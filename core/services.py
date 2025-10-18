@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional, Iterable
 from .ports import ICanvasClient
-from .models import Course
+from .models import Course, Assignment
 
 from datetime import datetime, timezone
 
@@ -94,4 +94,37 @@ class CourseService:
             # Could not determine a current term, return everything rather
             return courses
 
-        return [c for c in courses if c.enrollment_term_id == current_term_id]
+        return [c for c in courses if c.enrollment_term_id == current_term_id if isinstance(c, Course)]
+
+    def get_unsubmitted_assignments(self) -> List[Assignment]:
+        """
+        Fetches all most recent unsubmitted assignments
+        """
+        assignments = []
+        curr_courses: List[Course] = self.list_courses(include_archived=False)
+        course_ids: List[int] = [c.id for c in curr_courses]
+
+        for course_id in course_ids:
+            try:
+                path = f"/api/v1/courses/{course_id}"
+                course_data = next(self.client.get_paginated(path))
+                course_name = course_data.get("name", f"Course {course_id}")
+            except (StopIteration, Exception):
+                print(f"Warning: Could not fetch details for course ID {course_id}. Skipping.")
+                continue
+
+            assignment_path = f"/api/v1/courses/{course_id}/assignments"
+            assignment_params = {"include[]": ["submission"]}
+            paginated = self.client.get_paginated(assignment_path,
+                                                  params=assignment_params)
+            for assign_data in paginated:
+                if (
+                    assign_data.get("id") in self.avoid_assignment_ids
+                    or Assignment.is_submitted(assign_data)
+                ):
+                    continue
+
+                assignments.append(Assignment.from_api_dict(
+                    assign_data,
+                    course_name))
+        return assignments
