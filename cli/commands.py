@@ -1,12 +1,13 @@
 
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from typing import Callable, Dict, Type, Any
+from typing import Callable, Dict, Type, Any, List
 
 from core.services import CourseService
 
 # For type annotations
 from argparse import ArgumentParser
+from core.models import Assignment
 
 # --- Registry ---
 
@@ -84,4 +85,15 @@ class ShowAssignments(ICommand):
                        help="Restrict to specific course id(s); repeatable")
 
     def run(self, args, deps) -> None:
-        raise NotImplementedError("ShowAssignments.run: Not Implemented")
+        if deps.canvas_client is None:
+            raise NotImplementedError("Likely missing CANVAS_TOKEN in .env)")
+        if deps.presenter is None:
+            raise NotImplementedError("No presenter configured")
+
+        service = CourseService(deps.canvas_client)
+        assignments: List[Assignment] = service.get_unsubmitted_assignments(window_days=args.window_days)
+
+        overdue: List[Assignment] = [a for a in assignments if a.is_overdue(args.window_days)]
+        upcoming: List[Assignment] = [a for a in assignments if not a.is_overdue(args.window_days)]
+
+        deps.presenter.display_assignments(overdue, upcoming)

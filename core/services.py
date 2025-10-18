@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Iterable
 from .ports import ICanvasClient
 from .models import Course, Assignment
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from utils.iso_parser import _parse_iso
 
@@ -96,35 +96,53 @@ class CourseService:
 
         return [c for c in courses if c.enrollment_term_id == current_term_id if isinstance(c, Course)]
 
-    def get_unsubmitted_assignments(self) -> List[Assignment]:
+    def get_assignments(self) -> List[Assignment]:
+        """Fetch all assignments for current-term courses, excluding submitted ones."""
+        assignments: List[Assignment] = []
+
+        curr_courses: List[Course] = self.list_courses(include_archived=False)
+        for course in curr_courses:
+            course_id = course.id
+            course_name = course.name  # we already have it
+
+            assignment_path = f"/api/v1/courses/{course_id}/assignments"
+            assignment_params = {"include[]": ["submission"], "per_page": 100}
+
+            try:
+                pages = self._client.get_paginated(
+                    assignment_path, params=assignment_params
+                )
+            except Exception as e:
+                print(
+                    f"Warning: Failed to fetch assignments for course "
+                    f"{course_id} ({course_name}): {e}"
+                )
+                continue
+
+            for data in pages:
+                assignment: Assignment = Assignment.from_api_dict(data, course_name)
+                assignments.append(assignment)
+
+        return assignments
+
+    def get_unsubmitted_assignments(self, window_days: int) -> List[Assignment]:
         """
         Fetches all most recent unsubmitted assignments
         """
-        assignments = []
-        curr_courses: List[Course] = self.list_courses(include_archived=False)
-        course_ids: List[int] = [c.id for c in curr_courses]
+        all_assignments: List[Assignment] = self.get_assignments()
+        unsubmitted: List[Assignment] = []
 
-        for course_id in course_ids:
-            try:
-                path = f"/api/v1/courses/{course_id}"
-                course_data = next(self.client.get_paginated(path))
-                course_name = course_data.get("name", f"Course {course_id}")
-            except (StopIteration, Exception):
-                print(f"Warning: Could not fetch details for course ID {course_id}. Skipping.")
+        now = datetime.now(timezone.utc)
+        for assignment in all_assignments:
+            if not assignment.due_at:
                 continue
 
-            assignment_path = f"/api/v1/courses/{course_id}/assignments"
-            assignment_params = {"include[]": ["submission"]}
-            paginated = self.client.get_paginated(assignment_path,
-                                                  params=assignment_params)
-            for assign_data in paginated:
-                if (
-                    assign_data.get("id") in self.avoid_assignment_ids
-                    or Assignment.is_submitted(assign_data)
-                ):
-                    continue
+            window_end = assignment.due_at + timedelta(days=window_days)
 
-                assignments.append(Assignment.from_api_dict(
-                    assign_data,
-                    course_name))
-        return assignments
+            # If assignment has been submitted or passed window, then skip
+            if assignment.is_submitted() or now > window_end:
+                continue
+
+            unsubmitted.append(assignment)
+
+        return unsubmitted
